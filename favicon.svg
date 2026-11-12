@@ -1,1 +1,14 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d946ef"/><stop offset=".5" stop-color="#9d5cff"/><stop offset="1" stop-color="#38bdf8"/></linearGradient></defs><rect width="64" height="64" rx="14" fill="#0b0716"/><path d="M32 10 50 54H42L38 44H26L22 54H14ZM29 37H35L32 28Z" fill="url(#g)"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Arise">
+  <defs>
+    <linearGradient id="g" x1="10" y1="6" x2="54" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f0abfc"/>
+      <stop offset=".5" stop-color="#9d5cff"/>
+      <stop offset="1" stop-color="#38bdf8"/>
+    </linearGradient>
+    <linearGradient id="f" x1="32" y1="4" x2="32" y2="60" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a1033"/>
+      <stop offset="1" stop-color="#0a0716"/>
+    </linearGradient>
+  </defs>
+  <path d="M32 3.5 56.7 17.75v28.5L32 60.5 7.3 46.25v-28.5Z" fill="url(#f)" stroke="url(#g)" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M32 14.5 46.5 49h-6.3l-3.1-7.6H26.9L23.8 49h-6.3Zm-3 21.2h6L32 28.1Z" fill="url(#g)" fill-rule="evenodd"/></svg>

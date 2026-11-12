@@ -1,10 +1,12 @@
 // POST /api/chat  { mensagens: [{role, content}] }  ->  texto em streaming
-import { SISTEMA, autenticado, chamarGemini, dentroDoLimite, json, lerJson } from './_lib.js';
+import { SISTEMA, autenticado, chamarGemini, dentroDoLimite, dentroDoLimiteDiario, json, lerJson } from './_lib.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { erro: 'use POST' });
-  if (!autenticado(req)) return json(res, 401, { erro: 'faça login' });
-  if (!dentroDoLimite('chat')) return json(res, 429, { erro: 'Muitas mensagens em 1 minuto. Aguarde um pouco.' });
+  const usuario = autenticado(req);
+  if (!usuario) return json(res, 401, { erro: 'faça login' });
+  if (!dentroDoLimite('chat:' + usuario.email)) return json(res, 429, { erro: 'Muitas mensagens em 1 minuto. Aguarde um pouco.' });
+  if (!dentroDoLimiteDiario(usuario.email)) return json(res, 429, { erro: 'Você atingiu o limite de uso de hoje. Volte amanhã.' });
 
   let dado;
   try { dado = await lerJson(req); } catch { return json(res, 400, { erro: 'pedido inválido' }); }

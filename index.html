@@ -6,6 +6,9 @@
 <meta name="robots" content="noindex, nofollow">
 <title>Arise AI</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,23 +16,35 @@
 
 <!-- ========== LOGIN ========== -->
 <section id="tela-login" class="tela-login" hidden>
-  <form id="form-login" class="cartao-login">
-    <div class="logo grande">ARISE</div>
-    <p class="sub">Sua assistente pessoal</p>
-    <input id="senha" type="password" placeholder="Senha" autocomplete="current-password" required>
-    <button class="btn-pri" type="submit">Entrar</button>
+  <div class="cartao-login">
+    <div class="marca vertical">
+      <img src="marca.svg" alt="" class="simbolo grande">
+      <span class="nome-marca">arise</span>
+    </div>
+    <h1 class="titulo-login">Bem-vindo</h1>
+    <p class="sub">Entre com sua conta Google para continuar.</p>
+    <div id="botao-google" class="botao-google"></div>
     <div id="erro-login" class="erro"></div>
-  </form>
+    <p class="aviso">🔒 Acesso só para e-mails liberados.<br>
+      O texto que você escreve é processado pelo <b>Google Gemini</b>.
+      Não insira dados pessoais, sigilosos ou de processos.<br>
+      Ao entrar, você concorda com os <a href="termos.html" target="_blank" rel="noopener">Termos de Uso</a>
+      (uso livre, sem suporte e sem garantias).</p>
+  </div>
 </section>
 
 <!-- ========== APP ========== -->
 <div id="app" class="app" hidden>
   <header class="barra">
-    <div class="logo">ARISE</div>
+    <div class="marca horizontal">
+      <img src="marca.svg" alt="" class="simbolo">
+      <span class="nome-marca">arise</span>
+    </div>
     <nav>
       <button class="aba ativa" data-aba="chat">✦ Chat</button>
       <button class="aba" data-aba="ideia">✎ Melhorar ideia</button>
     </nav>
+    <span class="usuario" id="usuario"></span>
     <button class="btn-sec pequeno" id="btn-sair" title="Sair">Sair</button>
   </header>
 
@@ -37,13 +52,16 @@
     <section class="painel ativo" id="aba-chat">
       <div class="rolagem" id="rolagem">
         <div class="boas-vindas" id="boas-vindas">
-          <div class="logo enorme">ARISE</div>
-          <h1>Levante-se, <span class="brilho">Jonathan</span>.</h1>
-          <p class="sub">Pergunte qualquer coisa ou peça ajuda para descrever um sistema.</p>
+          <div class="marca vertical heroi">
+            <div class="halo"><img src="marca.svg" alt="" class="simbolo enorme"></div>
+            <span class="nome-marca">arise</span>
+          </div>
+          <h1>Olá, <span class="brilho" id="nome-boas-vindas">bem-vindo</span>.</h1>
+          <p class="sub">Como posso ajudar hoje?</p>
           <div class="sugestoes">
-            <button class="sug">Me ajude a descrever um sistema de controle de vistorias</button>
-            <button class="sug">Escreva um e-mail formal pedindo uma reunião</button>
-            <button class="sug">Explique o que é uma API REST em termos simples</button>
+            <button class="sug" data-texto="Me ajude a descrever um sistema de controle de vistorias"><span class="sug-ico">◇</span><span class="sug-t">Descrever um sistema</span><span class="sug-d">Controle de vistorias</span></button>
+            <button class="sug" data-texto="Escreva um e-mail formal pedindo uma reunião"><span class="sug-ico">✉</span><span class="sug-t">Redigir um e-mail</span><span class="sug-d">Pedido formal de reunião</span></button>
+            <button class="sug" data-texto="Explique o que é uma API REST em termos simples"><span class="sug-ico">◎</span><span class="sug-t">Explicar um conceito</span><span class="sug-d">O que é uma API REST</span></button>
           </div>
         </div>
         <div class="mensagens" id="mensagens"></div>
@@ -74,6 +92,7 @@
   </main>
 </div>
 
+<script src="https://accounts.google.com/gsi/client" async></script>
 <script src="app.js"></script>
 </body>
 </html>

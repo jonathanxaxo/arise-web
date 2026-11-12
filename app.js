@@ -32,18 +32,46 @@ async function api(url, opcoes = {}) {
   return d;
 }
 
-// ---------------- login ----------------
-function mostrarLogin() { $("#app").hidden = true; $("#tela-login").hidden = false; $("#senha").focus(); }
-function mostrarApp() { $("#tela-login").hidden = true; $("#app").hidden = false; $("#txt").focus(); }
+// ---------------- login com Google ----------------
+let clientId = "";
+let botaoDesenhado = false;
 
-$("#form-login").addEventListener("submit", async e => {
-  e.preventDefault();
+function desenharBotaoGoogle(tentativas = 0) {
+  if (botaoDesenhado) return;
+  if (!window.google?.accounts?.id) {
+    if (tentativas < 50) setTimeout(() => desenharBotaoGoogle(tentativas + 1), 200);
+    else $("#erro-login").textContent = "Não consegui carregar o login do Google. Verifique a internet.";
+    return;
+  }
+  if (!clientId) { $("#erro-login").textContent = "Login do Google ainda não configurado (GOOGLE_CLIENT_ID)."; return; }
+  google.accounts.id.initialize({ client_id: clientId, callback: aoEntrarComGoogle, ux_mode: "popup", auto_select: false });
+  google.accounts.id.renderButton($("#botao-google"), { theme: "filled_black", size: "large", shape: "pill", text: "signin_with", locale: "pt-BR" });
+  botaoDesenhado = true;
+}
+
+async function aoEntrarComGoogle(resposta) {
+  $("#erro-login").textContent = "Entrando…";
+  try {
+    const d = await api("/api/login", { method: "POST", body: JSON.stringify({ credential: resposta.credential }) });
+    mostrarApp(d);
+  } catch (err) { $("#erro-login").textContent = err.message; }
+}
+
+function mostrarLogin() { $("#app").hidden = true; $("#tela-login").hidden = false; desenharBotaoGoogle(); }
+function mostrarApp(u = {}) {
   $("#erro-login").textContent = "";
-  try { await api("/api/login", { method: "POST", body: JSON.stringify({ senha: $("#senha").value }) }); $("#senha").value = ""; mostrarApp(); }
-  catch (err) { $("#erro-login").textContent = err.message; }
+  $("#tela-login").hidden = true; $("#app").hidden = false;
+  $("#usuario").textContent = u.email || "";
+  $("#nome-boas-vindas").textContent = u.nome || "bem-vindo";
+  $("#txt").focus();
+}
+
+$("#btn-sair").addEventListener("click", async () => {
+  await fetch("/api/login", { method: "DELETE" });
+  window.google?.accounts?.id?.disableAutoSelect();
+  mostrarLogin();
 });
-$("#btn-sair").addEventListener("click", async () => { await fetch("/api/login", { method: "DELETE" }); mostrarLogin(); });
-api("/api/login").then(d => (d.logado ? mostrarApp() : mostrarLogin())).catch(mostrarLogin);
+api("/api/login").then(d => { clientId = d.clientId; d.logado ? mostrarApp(d) : mostrarLogin(); }).catch(() => mostrarLogin());
 
 // ---------------- abas ----------------
 $$(".aba").forEach(b => b.addEventListener("click", () => {
@@ -60,7 +88,7 @@ txt.addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e
 function novaMsg(papel, texto = "") {
   const div = document.createElement("div");
   div.className = `msg ${papel === "user" ? "eu" : "ia"}`;
-  div.innerHTML = `<div class="avatar">${papel === "user" ? "EU" : ""}</div><div class="balao"></div>`;
+  div.innerHTML = `<div class="avatar">${papel === "user" ? esc(($("#usuario").textContent || "eu").charAt(0).toUpperCase()) : ""}</div><div class="balao"></div>`;
   const b = $(".balao", div);
   papel === "user" ? (b.textContent = texto) : (b.innerHTML = md(texto));
   msgs.appendChild(div);
@@ -101,7 +129,7 @@ async function enviar(texto) {
   }
 }
 $("#form-chat").addEventListener("submit", e => { e.preventDefault(); const t = txt.value; txt.value = ""; txt.style.height = "auto"; enviar(t); });
-$$(".sug").forEach(b => b.addEventListener("click", () => enviar(b.textContent)));
+$$(".sug").forEach(b => b.addEventListener("click", () => enviar(b.dataset.texto || b.textContent)));
 $("#btn-nova").addEventListener("click", () => { historico.length = 0; msgs.innerHTML = ""; $("#boas-vindas").style.display = ""; });
 
 // ---------------- melhorar ideia ----------------
