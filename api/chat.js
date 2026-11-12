@@ -1,5 +1,5 @@
 // POST /api/chat  { mensagens: [{role, content}] }  ->  texto em streaming
-import { SISTEMA, autenticado, chamarGemini, dentroDoLimite, dentroDoLimiteDiario, json, lerJson } from './_lib.js';
+import { SISTEMA, autenticado, chamarGemini, dentroDoLimite, dentroDoLimiteDiario, json, lerJson, motivoErro } from './_lib.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return json(res, 405, { erro: 'use POST' });
@@ -22,11 +22,7 @@ export default async function handler(req, res) {
   } catch (e) {
     return json(res, 500, { erro: e.message });
   }
-  if (!resp.ok) {
-    const motivo = resp.status === 429 ? 'Limite grátis do Gemini atingido. Tente mais tarde.' :
-      resp.status === 401 || resp.status === 403 ? 'Chave do Gemini inválida.' : `Gemini respondeu ${resp.status}.`;
-    return json(res, 502, { erro: motivo });
-  }
+  if (!resp.ok) return json(res, 502, { erro: await motivoErro(resp) });
 
   res.statusCode = 200;
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');

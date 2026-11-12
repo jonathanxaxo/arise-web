@@ -133,27 +133,58 @@ export function dentroDoLimite(chave, maxPorMinuto = 20) {
 
 // ---------- Gemini (endpoint compativel com OpenAI) ----------
 const BASE = () => (process.env.GEMINI_BASE_URL || 'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/, '');
-let modeloEmCache = null;
+let candidatosEmCache = null;
+let modeloQueFunciona = null;
 
-// Usa GEMINI_MODELO se definido; senao escolhe sozinho o "flash" mais recente disponivel para a chave.
-export async function modelo() {
-  if (process.env.GEMINI_MODELO) return process.env.GEMINI_MODELO;
-  if (modeloEmCache) return modeloEmCache;
+// Lista os modelos de texto da chave, do mais indicado para o menos:
+// flash estavel (mais novo primeiro) -> flash-lite -> demais flash (preview etc.).
+// Alguns modelos novos tem cota gratis ZERO; por isso tentamos varios.
+async function candidatos() {
+  if (process.env.GEMINI_MODELO) return lista(process.env.GEMINI_MODELO);
+  if (candidatosEmCache) return candidatosEmCache;
   const r = await fetch(`${BASE()}/models`, { headers: { Authorization: `Bearer ${process.env.GEMINI_API_KEY}` } });
-  if (!r.ok) throw new Error(`não consegui listar os modelos do Gemini (${r.status}). Defina GEMINI_MODELO.`);
+  if (!r.ok) throw new Error(`Não consegui listar os modelos do Gemini (${r.status}). Confira a GEMINI_API_KEY.`);
   const ids = ((await r.json()).data || []).map((m) => String(m.id).replace(/^models\//, ''));
-  const candidatos = ids.filter((id) => /flash/.test(id) && !/(lite|image|tts|audio|live|thinking|exp|preview|embedding)/.test(id));
+  const texto = ids.filter((id) => /flash/.test(id) && !/(image|tts|audio|live|embedding|native|computer|robotics)/.test(id));
   const ordenar = (a, b) => b.localeCompare(a, 'en', { numeric: true });
-  modeloEmCache = candidatos.sort(ordenar)[0] || ids.filter((id) => /flash/.test(id)).sort(ordenar)[0];
-  if (!modeloEmCache) throw new Error('nenhum modelo "flash" disponível. Defina GEMINI_MODELO.');
-  return modeloEmCache;
+  const estaveis = texto.filter((id) => !/(lite|preview|exp|thinking)/.test(id)).sort(ordenar);
+  const lite = texto.filter((id) => /lite/.test(id) && !/(preview|exp)/.test(id)).sort(ordenar);
+  const resto = texto.filter((id) => !estaveis.includes(id) && !lite.includes(id)).sort(ordenar);
+  candidatosEmCache = [...estaveis, ...lite, ...resto];
+  if (!candidatosEmCache.length) throw new Error('Nenhum modelo "flash" disponível para esta chave. Defina GEMINI_MODELO.');
+  return candidatosEmCache;
 }
 
+/** Chama o Gemini; se um modelo recusar (cota zero, limite, indisponivel), tenta o proximo. */
 export async function chamarGemini(mensagens, { stream = true } = {}) {
   if (!process.env.GEMINI_API_KEY) throw new Error('Configure GEMINI_API_KEY nas variáveis de ambiente.');
-  return fetch(`${BASE()}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
-    body: JSON.stringify({ model: await modelo(), messages: mensagens, stream, temperature: 0.6 }),
-  });
+  const todos = await candidatos();
+  const ordem = modeloQueFunciona ? [modeloQueFunciona, ...todos.filter((m) => m !== modeloQueFunciona)] : todos;
+  let ultima = null;
+  for (const m of ordem.slice(0, 6)) {
+    const r = await fetch(`${BASE()}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
+      body: JSON.stringify({ model: m, messages: mensagens, stream, temperature: 0.6 }),
+    });
+    if (r.ok) { modeloQueFunciona = m; return r; }
+    if (ultima) await ultima.body?.cancel().catch(() => {});
+    ultima = r;
+    if (![429, 404, 400, 403, 503].includes(r.status) || r.status === 401) break; // chave invalida: nao adianta trocar
+    if (m === modeloQueFunciona) modeloQueFunciona = null;
+  }
+  return ultima;
+}
+
+/** Mensagem amigavel + motivo real do Google (para saber o que aconteceu). */
+export async function motivoErro(resp) {
+  let detalhe = '';
+  try {
+    const j = JSON.parse(await resp.text());
+    detalhe = String((Array.isArray(j) ? j[0] : j)?.error?.message || '').slice(0, 220);
+  } catch { /* sem corpo */ }
+  const base = resp.status === 429 ? 'Limite do Gemini atingido (cota grátis).' :
+    resp.status === 401 || resp.status === 403 ? 'A chave do Gemini foi recusada.' :
+    `O Gemini respondeu ${resp.status}.`;
+  return detalhe ? `${base} Detalhe do Google: ${detalhe}` : base;
 }

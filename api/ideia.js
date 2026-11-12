@@ -1,6 +1,6 @@
 // POST /api/ideia { ideia }  ->  { ideia: texto melhorado }
 // Transforma uma ideia vaga num texto claro, pronto para colar no SEMA Gênese.
-import { SISTEMA, autenticado, chamarGemini, dentroDoLimite, dentroDoLimiteDiario, json, lerJson } from './_lib.js';
+import { SISTEMA, autenticado, chamarGemini, dentroDoLimite, dentroDoLimiteDiario, json, lerJson, motivoErro } from './_lib.js';
 
 const PEDIDO = `Reescreva a ideia de sistema abaixo para que fique clara e completa, pronta para gerar um prompt de desenvolvimento.
 Responda SOMENTE com o texto da ideia melhorada, em 1 a 3 parágrafos curtos, em português do Brasil, contendo:
@@ -27,7 +27,7 @@ export default async function handler(req, res) {
       { role: 'system', content: SISTEMA },
       { role: 'user', content: PEDIDO.replace('{IDEIA}', ideia) },
     ], { stream: false });
-    if (!r.ok) return json(res, 502, { erro: r.status === 429 ? 'Limite grátis do Gemini atingido.' : `Gemini respondeu ${r.status}.` });
+    if (!r.ok) return json(res, 502, { erro: await motivoErro(r) });
     const texto = ((await r.json()).choices?.[0]?.message?.content || '')
       .replace(/<\/?ideia>/gi, '').trim();
     return json(res, 200, { ideia: texto });
