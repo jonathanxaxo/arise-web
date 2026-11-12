@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Arise AI</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="fundo"><div class="orbe o1"></div><div class="orbe o2"></div><div class="orbe o3"></div></div>
+
+<!-- ========== LOGIN ========== -->
+<section id="tela-login" class="tela-login" hidden>
+  <form id="form-login" class="cartao-login">
+    <div class="logo grande">ARISE</div>
+    <p class="sub">Sua assistente pessoal</p>
+    <input id="senha" type="password" placeholder="Senha" autocomplete="current-password" required>
+    <button class="btn-pri" type="submit">Entrar</button>
+    <div id="erro-login" class="erro"></div>
+  </form>
+</section>
+
+<!-- ========== APP ========== -->
+<div id="app" class="app" hidden>
+  <header class="barra">
+    <div class="logo">ARISE</div>
+    <nav>
+      <button class="aba ativa" data-aba="chat">✦ Chat</button>
+      <button class="aba" data-aba="ideia">✎ Melhorar ideia</button>
+    </nav>
+    <button class="btn-sec pequeno" id="btn-sair" title="Sair">Sair</button>
+  </header>
+
+  <main>
+    <section class="painel ativo" id="aba-chat">
+      <div class="rolagem" id="rolagem">
+        <div class="boas-vindas" id="boas-vindas">
+          <div class="logo enorme">ARISE</div>
+          <h1>Levante-se, <span class="brilho">Jonathan</span>.</h1>
+          <p class="sub">Pergunte qualquer coisa ou peça ajuda para descrever um sistema.</p>
+          <div class="sugestoes">
+            <button class="sug">Me ajude a descrever um sistema de controle de vistorias</button>
+            <button class="sug">Escreva um e-mail formal pedindo uma reunião</button>
+            <button class="sug">Explique o que é uma API REST em termos simples</button>
+          </div>
+        </div>
+        <div class="mensagens" id="mensagens"></div>
+      </div>
+      <form class="entrada" id="form-chat">
+        <textarea id="txt" rows="1" placeholder="Fale com a Arise…"></textarea>
+        <button type="button" class="btn-sec" id="btn-nova" title="Nova conversa">⟲</button>
+        <button type="submit" class="btn-pri" id="btn-enviar">Enviar</button>
+      </form>
+    </section>
+
+    <section class="painel" id="aba-ideia">
+      <div class="ideia">
+        <h2>Melhorar ideia para o <span class="brilho">SEMA Gênese</span></h2>
+        <p class="sub">Escreva a ideia do jeito que vier. A Arise devolve um texto claro para colar no campo "Ideia" do Gênese.</p>
+        <textarea id="ideia-in" rows="5" placeholder="ex.: quero um sistema pra controlar as vistorias dos fiscais, saber onde foram e o que acharam"></textarea>
+        <div class="linha"><button class="btn-pri" id="btn-ideia">✨ Melhorar ideia</button></div>
+        <div class="resultado" id="ideia-out-box" hidden>
+          <div class="rotulo">Ideia melhorada</div>
+          <div id="ideia-out" class="texto-ideia"></div>
+          <div class="linha">
+            <button class="btn-sec" id="btn-copiar">Copiar</button>
+            <a class="btn-sec" href="https://sema-genese.vercel.app" target="_blank" rel="noopener">Abrir o Gênese ↗</a>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

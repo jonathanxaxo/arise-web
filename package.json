@@ -1,0 +1,11 @@
+{
+  "name": "arise-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Arise AI na web: chat e melhoria de ideias para o SEMA Gênese, usando o Gemini (plano grátis).",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env.local scripts/dev.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
