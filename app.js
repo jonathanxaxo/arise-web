@@ -45,7 +45,7 @@ function desenharBotaoGoogle(tentativas = 0) {
   }
   if (!clientId) { $("#erro-login").textContent = "Login do Google ainda não configurado (GOOGLE_CLIENT_ID)."; return; }
   google.accounts.id.initialize({ client_id: clientId, callback: aoEntrarComGoogle, ux_mode: "popup", auto_select: false });
-  google.accounts.id.renderButton($("#botao-google"), { theme: "filled_black", size: "large", shape: "pill", text: "signin_with", locale: "pt-BR" });
+  google.accounts.id.renderButton($("#botao-google"), { type: "standard", theme: "filled_black", size: "medium", shape: "pill", text: "signin_with", logo_alignment: "left", width: 230, locale: "pt-BR" });
   botaoDesenhado = true;
 }
 
