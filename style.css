@@ -178,6 +178,9 @@ main { flex: 1; min-height: 0; position: relative; }
 
 ::-webkit-scrollbar { width: 10px; } ::-webkit-scrollbar-thumb { background: rgba(157,92,255,.25); border-radius: 10px; border: 2px solid transparent; background-clip: padding-box; }
 
+.msg.ia { flex-wrap: wrap; }
+.tempo { flex-basis: 100%; padding-left: 46px; margin-top: -6px; font-size: 11px; color: var(--texto-3); letter-spacing: .01em; }
+
 /* ---------- pagina de termos ---------- */
 body.pagina-texto { overflow-y: auto; }
 .documento { max-width: 760px; margin: 0 auto; padding: 40px 20px 60px; }

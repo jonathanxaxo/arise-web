@@ -95,6 +95,15 @@ function novaMsg(papel, texto = "") {
   return b;
 }
 
+// Linha discreta embaixo da resposta: tempo ate a 1a palavra, tempo total e modelo usado
+function mostrarTempo(balao, msPrimeira, msTotal, modelo) {
+  const s = (ms) => (ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+  const info = document.createElement("div");
+  info.className = "tempo";
+  info.textContent = `⚡ ${s(msPrimeira)} s até a 1ª palavra · ${s(msTotal)} s no total${modelo ? " · " + modelo : ""}`;
+  balao.after(info);
+}
+
 async function enviar(texto) {
   texto = texto.trim();
   if (!texto) return;
@@ -105,20 +114,25 @@ async function enviar(texto) {
   balao.classList.add("digitando");
   $("#btn-enviar").disabled = true;
   rol.scrollTop = rol.scrollHeight;
+  const t0 = performance.now();
+  let tPrimeira = 0;
   try {
     const r = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mensagens: historico }) });
     if (r.status === 401) { mostrarLogin(); throw new Error("Sessão expirada. Entre de novo."); }
     if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.erro || `erro ${r.status}`); }
     const leitor = r.body.getReader(), dec = new TextDecoder();
-    let total = "";
+    let total = "", agendado = false;
+    const desenhar = () => { agendado = false; balao.innerHTML = md(total); rol.scrollTop = rol.scrollHeight; };
     for (;;) {
       const { value, done } = await leitor.read();
       if (done) break;
+      if (!tPrimeira) tPrimeira = performance.now();
       total += dec.decode(value, { stream: true });
-      balao.innerHTML = md(total);
-      rol.scrollTop = rol.scrollHeight;
+      if (!agendado) { agendado = true; requestAnimationFrame(desenhar); } // redesenha no maximo 1x por quadro
     }
+    desenhar();
     historico.push({ role: "assistant", content: total });
+    mostrarTempo(balao, tPrimeira - t0, performance.now() - t0, r.headers.get("X-Arise-Modelo"));
   } catch (e) {
     balao.innerHTML = `<span class="erro">${esc(e.message)}</span>`;
     historico.pop();

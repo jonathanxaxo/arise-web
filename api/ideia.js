@@ -30,7 +30,7 @@ export default async function handler(req, res) {
     if (!r.ok) return json(res, 502, { erro: await motivoErro(r) });
     const texto = ((await r.json()).choices?.[0]?.message?.content || '')
       .replace(/<\/?ideia>/gi, '').trim();
-    return json(res, 200, { ideia: texto });
+    return json(res, 200, { ideia: texto, modelo: r.modelo || '' });
   } catch (e) {
     return json(res, 500, { erro: e.message });
   }

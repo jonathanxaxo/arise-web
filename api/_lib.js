@@ -155,25 +155,71 @@ async function candidatos() {
   return candidatosEmCache;
 }
 
-/** Chama o Gemini; se um modelo recusar (cota zero, limite, indisponivel), tenta o proximo. */
+// Raciocinio estendido ("thinking") deixa a 1a palavra MUITO mais lenta. Pedimos o minimo possivel;
+// cada modelo aceita valores diferentes, entao tentamos em ordem e lembramos o que funcionou.
+const NIVEIS_RACIOCINIO = ['none', 'minimal', 'low', null]; // null = nao envia o parametro
+const nivelPorModelo = new Map();
+
+async function chamarModelo(modelo, mensagens, stream) {
+  const inicio = nivelPorModelo.has(modelo) ? NIVEIS_RACIOCINIO.indexOf(nivelPorModelo.get(modelo)) : 0;
+  let r = null;
+  for (const nivel of NIVEIS_RACIOCINIO.slice(Math.max(inicio, 0))) {
+    const corpo = { model: modelo, messages: mensagens, stream, temperature: 0.6 };
+    if (nivel) corpo.reasoning_effort = nivel;
+    if (r) await r.body?.cancel().catch(() => {});
+    r = await fetch(`${BASE()}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
+      body: JSON.stringify(corpo),
+      signal: AbortSignal.timeout(25_000),
+    });
+    if (r.status !== 400) { if (r.ok) nivelPorModelo.set(modelo, nivel); return r; } // 400 = nivel nao aceito: tenta o proximo
+  }
+  return r;
+}
+
+/**
+ * Chama o Gemini; se um modelo recusar (cota zero, limite, indisponivel), tenta o proximo.
+ * Devolve a Response com .modelo (nome usado) e .msAteResposta (tempo ate o Google comecar a responder).
+ */
 export async function chamarGemini(mensagens, { stream = true } = {}) {
   if (!process.env.GEMINI_API_KEY) throw new Error('Configure GEMINI_API_KEY nas variáveis de ambiente.');
+  const t0 = Date.now();
   const todos = await candidatos();
   const ordem = modeloQueFunciona ? [modeloQueFunciona, ...todos.filter((m) => m !== modeloQueFunciona)] : todos;
   let ultima = null;
   for (const m of ordem.slice(0, 6)) {
-    const r = await fetch(`${BASE()}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
-      body: JSON.stringify({ model: m, messages: mensagens, stream, temperature: 0.6 }),
-    });
-    if (r.ok) { modeloQueFunciona = m; return r; }
+    const r = await chamarModelo(m, mensagens, stream);
+    if (r.ok) {
+      modeloQueFunciona = m;
+      r.modelo = m;
+      r.msAteResposta = Date.now() - t0;
+      return r;
+    }
     if (ultima) await ultima.body?.cancel().catch(() => {});
     ultima = r;
     if (![429, 404, 400, 403, 503].includes(r.status) || r.status === 401) break; // chave invalida: nao adianta trocar
     if (m === modeloQueFunciona) modeloQueFunciona = null;
   }
   return ultima;
+}
+
+/** Testa todos os modelos candidatos em paralelo com uma pergunta curta e mede o tempo. */
+export async function diagnosticarModelos() {
+  const todos = await candidatos();
+  const pergunta = [{ role: 'user', content: 'Responda só: ok' }];
+  return Promise.all(todos.slice(0, 8).map(async (m) => {
+    const t0 = Date.now();
+    try {
+      const r = await chamarModelo(m, pergunta, false);
+      const ms = Date.now() - t0;
+      if (!r.ok) return { modelo: m, ok: false, status: r.status, ms, detalhe: (await motivoErro(r)).slice(0, 160) };
+      await r.json().catch(() => null);
+      return { modelo: m, ok: true, ms, raciocinio: nivelPorModelo.get(m) ?? 'padrão' };
+    } catch (e) {
+      return { modelo: m, ok: false, ms: Date.now() - t0, detalhe: e.message };
+    }
+  }));
 }
 
 /** Mensagem amigavel + motivo real do Google (para saber o que aconteceu). */

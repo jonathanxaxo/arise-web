@@ -28,6 +28,8 @@ export default async function handler(req, res) {
   res.setHeader('Content-Type', 'text/plain; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('X-Accel-Buffering', 'no');
+  res.setHeader('X-Arise-Modelo', resp.modelo || '');
+  res.setHeader('Server-Timing', `gemini;dur=${resp.msAteResposta || 0}`);
 
   // Converte o SSE do provedor em texto puro
   const leitor = resp.body.getReader();
