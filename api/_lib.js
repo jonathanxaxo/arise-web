@@ -167,12 +167,22 @@ async function chamarModelo(modelo, mensagens, stream) {
     const corpo = { model: modelo, messages: mensagens, stream, temperature: 0.6 };
     if (nivel) corpo.reasoning_effort = nivel;
     if (r) await r.body?.cancel().catch(() => {});
-    r = await fetch(`${BASE()}/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
-      body: JSON.stringify(corpo),
-      signal: AbortSignal.timeout(25_000),
-    });
+    // Limite so para o Google COMECAR a responder; depois o texto pode vir no tempo que precisar.
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), Number(process.env.GEMINI_TIMEOUT_MS || 12_000));
+    try {
+      r = await fetch(`${BASE()}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
+        body: JSON.stringify(corpo),
+        signal: ctl.signal,
+      });
+    } catch (e) {
+      // travou ou caiu: devolve um "504" para o laco de modelos tentar o proximo
+      return new Response(JSON.stringify({ error: { message: `sem resposta do modelo ${modelo} (${e.name === 'AbortError' ? 'tempo esgotado' : e.message})` } }), { status: 504 });
+    } finally {
+      clearTimeout(timer);
+    }
     if (r.status !== 400) { if (r.ok) nivelPorModelo.set(modelo, nivel); return r; } // 400 = nivel nao aceito: tenta o proximo
   }
   return r;
@@ -198,7 +208,7 @@ export async function chamarGemini(mensagens, { stream = true } = {}) {
     }
     if (ultima) await ultima.body?.cancel().catch(() => {});
     ultima = r;
-    if (![429, 404, 400, 403, 503].includes(r.status) || r.status === 401) break; // chave invalida: nao adianta trocar
+    if (![429, 404, 400, 403, 500, 503, 504].includes(r.status) || r.status === 401) break; // chave invalida: nao adianta trocar
     if (m === modeloQueFunciona) modeloQueFunciona = null;
   }
   return ultima;
@@ -229,7 +239,8 @@ export async function motivoErro(resp) {
     const j = JSON.parse(await resp.text());
     detalhe = String((Array.isArray(j) ? j[0] : j)?.error?.message || '').slice(0, 220);
   } catch { /* sem corpo */ }
-  const base = resp.status === 429 ? 'Limite do Gemini atingido (cota grátis).' :
+  const base = resp.status === 504 ? 'O Gemini demorou demais para responder.' :
+    resp.status === 429 ? 'Limite do Gemini atingido (cota grátis).' :
     resp.status === 401 || resp.status === 403 ? 'A chave do Gemini foi recusada.' :
     `O Gemini respondeu ${resp.status}.`;
   return detalhe ? `${base} Detalhe do Google: ${detalhe}` : base;
