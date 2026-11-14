@@ -215,21 +215,44 @@ export async function chamarGemini(mensagens, { stream = true } = {}) {
 }
 
 /** Testa todos os modelos candidatos em paralelo com uma pergunta curta e mede o tempo. */
-export async function diagnosticarModelos() {
-  const todos = await candidatos();
-  const pergunta = [{ role: 'user', content: 'Responda só: ok' }];
-  return Promise.all(todos.slice(0, 8).map(async (m) => {
+/**
+ * Mede, para cada modelo, o tempo ate a 1a PALAVRA (streaming) num nivel de raciocinio fixo.
+ * nivel: 'none' | 'minimal' | 'low' | 'padrao' (nao envia o parametro). Roda de 4 em 4 para nao estourar a cota.
+ */
+export async function diagnosticarModelos({ nivel = 'minimal', filtro = '' } = {}) {
+  const todos = (await candidatos()).filter((m) => !filtro || m.includes(filtro)).slice(0, 16);
+  const pergunta = [{ role: 'user', content: 'Diga apenas: olá' }];
+  const testar = async (m) => {
+    const corpo = { model: m, messages: pergunta, stream: true, temperature: 0.6 };
+    if (nivel !== 'padrao') corpo.reasoning_effort = nivel;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 30_000);
     const t0 = Date.now();
     try {
-      const r = await chamarModelo(m, pergunta, false);
-      const ms = Date.now() - t0;
-      if (!r.ok) return { modelo: m, ok: false, status: r.status, ms, detalhe: (await motivoErro(r)).slice(0, 160) };
-      await r.json().catch(() => null);
-      return { modelo: m, ok: true, ms, raciocinio: nivelPorModelo.get(m) ?? 'padrão' };
+      const r = await fetch(`${BASE()}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.GEMINI_API_KEY}` },
+        body: JSON.stringify(corpo), signal: ctl.signal,
+      });
+      const msInicio = Date.now() - t0;
+      if (!r.ok) return { modelo: m, ok: false, status: r.status, ms: msInicio, detalhe: (await motivoErro(r)).slice(0, 140) };
+      const leitor = r.body.getReader();
+      let msPrimeira = null;
+      for (;;) {
+        const { value, done } = await leitor.read();
+        if (done) break;
+        if (msPrimeira === null && /"content":"[^"]/.test(new TextDecoder().decode(value))) msPrimeira = Date.now() - t0;
+      }
+      return { modelo: m, ok: true, msPrimeiraPalavra: msPrimeira ?? Date.now() - t0, msTotal: Date.now() - t0 };
     } catch (e) {
-      return { modelo: m, ok: false, ms: Date.now() - t0, detalhe: e.message };
+      return { modelo: m, ok: false, ms: Date.now() - t0, detalhe: e.name === 'AbortError' ? 'mais de 30 s' : e.message };
+    } finally {
+      clearTimeout(timer);
     }
-  }));
+  };
+  const resultados = [];
+  for (let i = 0; i < todos.length; i += 4) resultados.push(...await Promise.all(todos.slice(i, i + 4).map(testar)));
+  return resultados;
 }
 
 /** Mensagem amigavel + motivo real do Google (para saber o que aconteceu). */
