@@ -95,13 +95,10 @@ function novaMsg(papel, texto = "") {
   return b;
 }
 
-// Linha discreta embaixo da resposta: tempo ate a 1a palavra, tempo total e modelo usado
+// Tempo de resposta fica OCULTO na tela: so aparece no console do navegador (F12) para diagnostico.
 function mostrarTempo(balao, msPrimeira, msTotal, modelo) {
-  const s = (ms) => (ms / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
-  const info = document.createElement("div");
-  info.className = "tempo";
-  info.textContent = `⚡ ${s(msPrimeira)} s até a 1ª palavra · ${s(msTotal)} s no total${modelo ? " · " + modelo : ""}`;
-  balao.after(info);
+  const s = (ms) => (ms / 1000).toFixed(1);
+  console.debug(`[Arise] 1a palavra ${s(msPrimeira)} s · total ${s(msTotal)} s · ${modelo || "?"}`);
 }
 
 async function enviar(texto) {
