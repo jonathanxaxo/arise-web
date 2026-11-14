@@ -150,14 +150,15 @@ async function candidatos() {
   const estaveis = texto.filter((id) => !/(lite|preview|exp|thinking)/.test(id)).sort(ordenar);
   const lite = texto.filter((id) => /lite/.test(id) && !/(preview|exp)/.test(id)).sort(ordenar);
   const resto = texto.filter((id) => !estaveis.includes(id) && !lite.includes(id)).sort(ordenar);
-  candidatosEmCache = [...estaveis, ...lite, ...resto];
+  // "lite" primeiro: no diagnostico de 14/11/2026 responderam em ~0,6 s, contra 12 s+ dos flash comuns.
+  candidatosEmCache = [...lite, ...estaveis, ...resto];
   if (!candidatosEmCache.length) throw new Error('Nenhum modelo "flash" disponível para esta chave. Defina GEMINI_MODELO.');
   return candidatosEmCache;
 }
 
 // Raciocinio estendido ("thinking") deixa a 1a palavra MUITO mais lenta. Pedimos o minimo possivel;
 // cada modelo aceita valores diferentes, entao tentamos em ordem e lembramos o que funcionou.
-const NIVEIS_RACIOCINIO = ['none', 'minimal', 'low', null]; // null = nao envia o parametro
+const NIVEIS_RACIOCINIO = ['minimal', 'low', 'none', null]; // null = nao envia o parametro
 const nivelPorModelo = new Map();
 
 async function chamarModelo(modelo, mensagens, stream) {
